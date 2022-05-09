@@ -51,7 +51,7 @@ export interface GitRepositoryParameters {
     remoteUrl: string;
     branch: string;
     commitId: string;
-    serviceConnectionId?: string; // Id of the service connection in Azure DevOps
+    serviceConnectionId: string; // Id of the service connection in Azure DevOps
 }
 
 export interface PipelineTemplate {

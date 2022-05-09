@@ -23,8 +23,8 @@ export async function locateSchemaFile(context: vscode.ExtensionContext): Promis
         // Well, we tried our best. Fall back to the predetermined schema paths.
     }
 
-    let alternateSchema = vscode.workspace.getConfiguration('azure-pipelines').get<string>('customSchemaFile');
-    if ((alternateSchema?.trim().length ?? 0) === 0) {
+    let alternateSchema = vscode.workspace.getConfiguration('azure-pipelines').get<string>('customSchemaFile', '');
+    if (alternateSchema.length === 0) {
         alternateSchema = path.join(context.extensionPath, 'service-schema.json');
     }
 
@@ -55,19 +55,27 @@ export function getSchemaAssociation(schemaFilePath: string): ISchemaAssociation
 
 async function autoDetectSchema(context: vscode.ExtensionContext): Promise<vscode.Uri | undefined> {
     // Get the remote URL if we're in a Git repo
-    let remoteUrl: string | void;
+    let remoteUrl: string | undefined;
     try {
         const gitExtension = await getGitExtensionApi();
         const repo = gitExtension.getRepository(vscode.workspace.workspaceFolders[0].uri);
+        if (repo === null) {
+            return undefined;
+        }
+
         await repo.status();
+        if (repo.state.HEAD === undefined) {
+            return undefined;
+        }
+
         const remoteName = repo.state.HEAD.remote;
-        remoteUrl = repo.state.remotes.find(remote => remote.name === remoteName).fetchUrl;
+        remoteUrl = repo.state.remotes.find(remote => remote.name === remoteName)?.fetchUrl;
     } catch (error) {
         return undefined;
     }
 
     // Are we in an Azure Repo?
-    if (remoteUrl && AzureDevOpsHelper.isAzureReposUrl(remoteUrl)) {
+    if (remoteUrl !== undefined && AzureDevOpsHelper.isAzureReposUrl(remoteUrl)) {
         const { organizationName } = AzureDevOpsHelper.getRepositoryDetailsFromRemoteUrl(remoteUrl);
         const azureAccountApi = await getAzureAccountExtensionApi();
         if (!(await azureAccountApi.waitForLogin())) {

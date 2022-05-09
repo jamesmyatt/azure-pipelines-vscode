@@ -61,8 +61,8 @@ export async function configurePipeline(): Promise<void> {
 }
 
 async function getWorkspace(): Promise<URI> {
-    const workspaceFolders = vscode.workspace?.workspaceFolders;
-    if (workspaceFolders?.length > 0) {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders !== undefined) {
         telemetryHelper.setTelemetry(TelemetryKeys.SourceRepoLocation, SourceOptions.CurrentWorkspace);
 
         if (workspaceFolders.length === 1) {
@@ -87,7 +87,7 @@ async function getWorkspace(): Promise<URI> {
             canSelectMany: false,
         });
 
-        if (selectedFolders?.length > 0) {
+        if (selectedFolders !== undefined) {
             return selectedFolders[0];
         } else {
             throw new Error(Messages.noWorkSpaceSelectedError);
@@ -128,20 +128,20 @@ class PipelineConfigurer {
         this.updateScmType(queuedPipeline);
 
         telemetryHelper.setCurrentStep('DisplayCreatedPipeline');
-        vscode.window.showInformationMessage(Messages.pipelineSetupSuccessfully, Messages.browsePipeline)
-            .then((action: string) => {
-                if (action && action.toLowerCase() === Messages.browsePipeline.toLowerCase()) {
-                    telemetryHelper.setTelemetry(TelemetryKeys.BrowsePipelineClicked, 'true');
-                    vscode.env.openExternal(URI.parse(queuedPipeline._links.web.href));
-                }
-            });
+        const action = await vscode.window.showInformationMessage(
+            Messages.pipelineSetupSuccessfully,
+            Messages.browsePipeline);
+        if (action?.toLowerCase() === Messages.browsePipeline.toLowerCase()) {
+            telemetryHelper.setTelemetry(TelemetryKeys.BrowsePipelineClicked, 'true');
+            vscode.env.openExternal(URI.parse(queuedPipeline._links.web.href));
+        }
     }
 
     private async getAllRequiredInputs() {
         try {
             await this.getGitDetailsFromRepository();
         } catch (error) {
-            telemetryHelper.logError(Layer, TracePoints.GetSourceRepositoryDetailsFailed, error);
+            telemetryHelper.logError(Layer, TracePoints.GetSourceRepositoryDetailsFailed, error as Error);
             throw error;
         }
 
@@ -193,7 +193,7 @@ class PipelineConfigurer {
                         await operationsClient.waitForOperationSuccess(operation.id);
                         this.inputs.project = await coreApi.getProject(this.inputs.project.name);
                     } catch (error) {
-                        telemetryHelper.logError(Layer, TracePoints.CreateNewOrganizationAndProjectFailure, error);
+                        telemetryHelper.logError(Layer, TracePoints.CreateNewOrganizationAndProjectFailure, error as Error);
                         throw error;
                     }
                 });
@@ -235,8 +235,8 @@ class PipelineConfigurer {
     }
 
     private async getGitRepositoryParameters(branch: string, remoteName: string): Promise<GitRepositoryParameters> {
-        let remoteUrl = this.repo.state.remotes.find(remote => remote.name === remoteName).fetchUrl;
-        if (remoteUrl) {
+        let remoteUrl = this.repo.state.remotes.find(remote => remote.name === remoteName)?.fetchUrl;
+        if (remoteUrl !== undefined) {
             if (AzureDevOpsHelper.isAzureReposUrl(remoteUrl)) {
                 remoteUrl = AzureDevOpsHelper.getFormattedRemoteUrl(remoteUrl);
                 return <GitRepositoryParameters>{
@@ -392,7 +392,7 @@ class PipelineConfigurer {
             // show available resources and get the chosen one
             this.appServiceClient = new AppServiceClient(this.inputs.azureSession.credentials2, this.inputs.azureSession.tenantId, this.inputs.azureSession.environment.portalUrl, this.inputs.targetResource.subscriptionId);
 
-            let resourceArray: Promise<Array<{label: string, data: ResourceManagementModels.GenericResource}>> = null;
+            let resourceArray: Promise<Array<{label: string, data: ResourceManagementModels.GenericResource}>> = [];
             let selectAppText: string = "";
             let placeHolderText: string = "";
 
@@ -521,7 +521,7 @@ class PipelineConfigurer {
                     return await this.serviceConnectionHelper.createAzureServiceConnection(serviceConnectionName, this.inputs.azureSession.tenantId, this.inputs.targetResource.subscriptionId, scope, aadApp);
                 }
                 catch (error) {
-                    telemetryHelper.logError(Layer, TracePoints.AzureServiceConnectionCreateFailure, error);
+                    telemetryHelper.logError(Layer, TracePoints.AzureServiceConnectionCreateFailure, error as Error);
                     throw error;
                 }
             });
@@ -588,7 +588,7 @@ class PipelineConfigurer {
                 }, this.inputs.project.name);
             }
             catch (error) {
-                telemetryHelper.logError(Layer, TracePoints.CreateAndQueuePipelineFailed, error);
+                telemetryHelper.logError(Layer, TracePoints.CreateAndQueuePipelineFailed, error as Error);
                 throw error;
             }
         });
