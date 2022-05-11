@@ -64,11 +64,8 @@ async function autoDetectSchema(context: vscode.ExtensionContext): Promise<vscod
         }
 
         await repo.status();
-        if (repo.state.HEAD === undefined) {
-            return undefined;
-        }
 
-        const remoteName = repo.state.HEAD.remote;
+        const remoteName = repo.state.HEAD?.upstream?.remote;
         remoteUrl = repo.state.remotes.find(remote => remote.name === remoteName)?.fetchUrl;
     } catch (error) {
         return undefined;
